@@ -1,5 +1,5 @@
 chrome.webNavigation.onBeforeNavigate.addListener(
-  () => {console.log('dooby')}
+  (data) => {console.log(data.url)}
 )
 
 // DEV TOOL: Logging for all of the webNavigation listeners
