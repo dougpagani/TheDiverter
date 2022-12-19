@@ -12,6 +12,7 @@
     "service_worker": "background.js"
   },
   "permissions": [
-    "webNavigation"
+    "webNavigation",
+    "tabs"
   ]
 }

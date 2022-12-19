@@ -2,6 +2,13 @@ chrome.webNavigation.onBeforeNavigate.addListener(
   (data) => {console.log(data.url)}
 )
 
+chrome.tabs.onActivated.addListener(
+  async(data) => {
+    const tab = await chrome.tabs.get(data.tabId);
+    console.log(tab.url)
+  }
+)
+
 // DEV TOOL: Logging for all of the webNavigation listeners
 
 // Copyright (c) 2012 The Chromium Authors. All rights reserved.
