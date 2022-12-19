@@ -1,0 +1,11 @@
+{
+  "name": "TheDiverter web watcher",
+  "version": "0.0.1",
+  "description": "publish focus change events to TheDiverter local server for possible intervention application",
+  "manifest_version": 3,
+  "author": "Dylan Sessler",
+  "action":{
+    "default_popup": "index.html",
+    "default_title": "TheDiverter web watcher"
+  }
+}
