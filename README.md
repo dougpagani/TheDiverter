@@ -6,7 +6,7 @@ The spiritual successor to [daemon-nanny](https://github.com/dougpagani/daemon-n
 A collaboration between [Dylan Sessler](https://github.com/dylan-sessler) & [Doug Pagani](https://github.com/dougpagani).
 
 Needs publishers:
-- chrome-extension -- TODO-LINK
+- chrome-extension -- TODO-LINK, dylan please add when ready
 - macos-app-focus-events -- TODO-LINK
 - linux-app-focus-events -- TODO-LINK
 
