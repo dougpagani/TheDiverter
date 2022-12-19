@@ -6,15 +6,21 @@ const CORE_DUMP_PATH = global.home + '.diverter-dump.json' // TODO
 const CONFIG_PATH = global.home + '.diverter-config.yml' // TODO
 const EVENT_EP_PATH = 'event'
 const CANCEL = 'CANCEL'
+const ONE_MINUTE_IN_MS = 60 * 1000
 
 // ---------------------
 // Database stuff
 // ---------------------
 function initDb() {
   // TODO: import from coredump here, on new-init
-  global.db = 
+  const cd = getCoreDump()
+  global.db = cd
 }
 
+function getCoreDump() {
+  const json = fs.readFileSync(CORE_DUMP_PATH)
+  return JSON.parse(json)
+}
 function dumpCore() {
   dbWriter(global.db)
 }
@@ -44,10 +50,10 @@ function gracefulStopServer() {
 }
 
 function stopListening() {
-  // TODO
+  // TODO -- need a ref to the listener
 }
 function finishQueue() {
-  // TODO
+  // TODO -- probably need to check jobs of node internals, and async-recursively await until those are processed
 }
 
 function dumpCoreOnly() {
@@ -131,10 +137,37 @@ function ibySessionTimeBudget(ee) {
   // saved for a ~15-minute interval. This would be better to be used in conjunction 
   // with a subsequent intervention, like an emotion-menu, since it's meant to implement 
   // the sensation of "well, I've already gone on reddit once today".
+
+  const timeOfEntry = date.now()
+
   if (ee === CANCEL) {
-    set 
+    const myTimer = setTimeout(resetSessionBudget, ONE_MINUTE_IN_MS)
+    global.db.stbTimer = myTimer
+    // alternative:
+    // saveValue({ iby: stb, key: 'timerRefForPossibleAbortOfSessionResetIfTheUserReencounters', value: myTimer})
+
+    return // BAIL ONCE TIMER IS SET
   }
-  ee
+
+  // else, is real event
+  if (isResumption(ee)) {
+    const spentBudget = getSpentBudget(ee)
+    const timeLeftInBudget = calculateTimeLeft(allowanceInMinutes, spentBudget)    
+    const actuationTimer = planActuator()
+    global.db.stb.acuationTimer = actuationTimer
+  } else { 
+    // is fresh event
+    const timeLeftInBudget = allowanceInMinutes
+    const actuationTimer = planActuator()
+    global.db.stb.acuationTimer = actuationTimer
+  }
+
+  const planActuator() => setTimeout(ACTUATOR, timeLeftInBudget)
+  const isResumption(ee) => { /* if under resumption-threshold */ }
+  const resetSessionBudget() => { global.db.TODO }
+  const getSpentBudgetForEe(ee) => { TODO }
+  const calculateTimeLeft(a, s) => { TODO }
+  const calculateBudgetDecrement(start, finish) // this is for daily budget actually, not STB; STB doesn't even bother
 }
 
 // ---------------------
