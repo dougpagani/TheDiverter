@@ -82,16 +82,27 @@ function initCoreDumpers() {
 
 function initServer() {
   const server = http.createServer(handleRequest);
-  server.listen(port, host, () => {
+  server.listen(PORT, HOST, () => {
     console.log(`Listening on: http://${host}:${port}/${EVENT_EP_PATH}`);
   });
 }
 
 function handleRequest(req, res) {
-  const ee = req.
-  // We can probably do this as soon as we've received the request and we know it's 
-  res.writeHead(200);
-  res.end(`pong`); // probably should only be for /ping route, change later
+  const reqRoute = url.parse(req.url,true).pathname
+  if (reqRoute === '/ping') {
+    // We can probably do this as soon as we've received the request and we know it's 
+    res.writeHead(200);
+    res.end(`pong`); // probably should only be for /ping route, change later
+    return
+  }
+  if (reqRoute === '/event') {
+    const ee = req.body // TODO; probably incorrect api for http-server, also depends on what's easy for publisher
+    res.end(``);
+    handleEncounter(ee)
+  }
+  // made it to invalid route
+  res.end(``);
+  console.log(`WARNING: invalid route [${reqRoute}]`)
 }
 
 // ---------------------
@@ -104,13 +115,24 @@ function handleEncounter(ee) {
   console.log(ee)
   // ... should give a stream of EncounterEvents
 
+  const oldIntervention = global.db.activeIntervention
   const relevantIntervention = lookupIntervention(ee)
-  console.log(`Intervening on [${ee}] with: [${relevantIntervention}]`) // todo, add a datestamp, use a real logger lib
-  relevantIntervention(ee)
+  global.db.activeIntervention = relevantIntervention
+
+  // Cancel the last, send-off the next
+  oldIntervention(CANCEL)
+  if (relevantIntervention === undefined) {
+    console.log(`No intervention for [${ee}]`)
+    return // BAIL; nothing to do
+  } else {
+    console.log(`Intervening on [${ee}] with: [${relevantIntervention}]`) // todo, add a datestamp, use a real logger lib
+    relevantIntervention(ee)
+  }
 }
 
 function lookupIntervention(ee) {
-  TODO // based-on loadConfig, probably set on global
+  // TODO // based-on loadConfig, probably set on global
+  return 'ibySessionTimeBudget' // could also send-off config-data here, or do it within the IBY
 }
 
 function loadConfig() {
@@ -153,7 +175,7 @@ function ibySessionTimeBudget(ee) {
   if (isResumption(ee)) {
     const spentBudget = getSpentBudget(ee)
     const timeLeftInBudget = calculateTimeLeft(allowanceInMinutes, spentBudget)    
-    const actuationTimer = planActuator()
+    const actuationTimer = planActuation()
     global.db.stb.acuationTimer = actuationTimer
   } else { 
     // is fresh event
@@ -170,9 +192,47 @@ function ibySessionTimeBudget(ee) {
   const calculateBudgetDecrement(start, finish) // this is for daily budget actually, not STB; STB doesn't even bother
 }
 
+function ibyDailyTimeBudget(ee) {
+  // Here's what I was talking about w.r.t. the "date shim" layer for these two interventions:
+  const timeOfEntry = date.now() // we can assume the system is processing fast enough to be "now"
+  ibyDtbWithTime(ee, timeOfEntry)
+}
+
+function ibyDtbWithTime(ee, encounterTime) {
+  const budgetLookupTable = global.db.dtb.balances
+  const activeMeteredDistraction = global.db.dtb.active
+  const amd = activeMeteredDistraction
+  const remainingBudget = getRemainingBudget()
+
+  if (isCancellation()) {
+    stopEatingIntoBudget()
+    return
+  }
+
+  // Handle Real Event
+  planActuation(remainingBudget) // if this is 0, it will fire more-or-less immediately
+  
+  // HELPER THUNKS
+  function getRemainingBudget() {
+    const remainingBudget = budgetLookupTable[ee] 
+    if (remainingBudget === undefined) {
+      remainingBudget = getAllowanceForDistraction(ee) // config is fallback/starter-amount
+    }
+    return remainingBudget
+  }
+  function stopEatingIntoBudget() {
+    // a.k.a. decrementBudget, saveBalance
+    const actionTimer = getActionTimer()
+    clearTimeout(actionTimer) // we are no longer going to intervene w/ the action since the user self-diverted
+    const timeSpent = encounterTime - amd.startTime
+    const timeLeft = remainingBudget - timeSpent
+    budgetLookupTable[ee] = timeLeft
+  }
+}
+
 // ---------------------
 // INITs
 // ---------------------
 initDb()
-initCoreDumpers()
-initServer()
+initCoreDumpers() // just sets-up a bunch of process.on(signal)-handlers
+initServer() // starts the listener
